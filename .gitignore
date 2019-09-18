@@ -46,3 +46,6 @@ env/
 .idea/
 /sampleproject/sampleproject/local_settings.py
 /sampleproject/db.sqlite3
+
+# pyenv
+.python-version

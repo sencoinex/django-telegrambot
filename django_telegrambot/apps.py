@@ -168,9 +168,9 @@ class DjangoTelegramBot(AppConfig):
             allowed_updates = b.get('ALLOWED_UPDATES', None)
             timeout = b.get('TIMEOUT', None)
             proxy = b.get('PROXY', None)
-            
+
             if self.mode == WEBHOOK_MODE:
-                try:              
+                try:
                     if b.get('MESSAGEQUEUE_ENABLED',False):
                         q = mq.MessageQueue(all_burst_limit=b.get('MESSAGEQUEUE_ALL_BURST_LIMIT',29),
                         all_time_limit_ms=b.get('MESSAGEQUEUE_ALL_TIME_LIMIT_MS',1024))
@@ -184,16 +184,47 @@ class DjangoTelegramBot(AppConfig):
                         if proxy:
                             request = Request(proxy_url=proxy['proxy_url'], urllib3_proxy_kwargs=proxy['urllib3_proxy_kwargs'])
                         bot = telegram.Bot(token=token, request=request)
-                        
+
                     DjangoTelegramBot.dispatchers.append(Dispatcher(bot, None, workers=0))
                     hookurl = '{}/{}/{}/'.format(webhook_site, webhook_base, token)
                     max_connections = b.get('WEBHOOK_MAX_CONNECTIONS', 40)
-                    setted = bot.setWebhook(hookurl, certificate=certificate, timeout=timeout, max_connections=max_connections, allowed_updates=allowed_updates)
                     webhook_info = bot.getWebhookInfo()
-                    real_allowed = webhook_info.allowed_updates if webhook_info.allowed_updates else ["ALL"]
 
+                    def diff_settings():
+                        # compare webhook url
+                        if webhook_info.url != hookurl:
+                            return True
+                        # compare max_connections
+                        if webhook_info.max_connections != max_connections:
+                            return True
+                        # certificate settings
+                        if (not webhook_info.has_custom_certificate) and certificate is not None:
+                            return True
+                        # compare allowed_updates list
+                        if allowed_updates is None:
+                            if webhook_info.allowed_updates is not None:
+                                return True
+                        elif webhook_info.allowed_updates is None:
+                            return True
+                        else:
+                            if len(allowed_updates) != len(webhook_info.allowed_updates):
+                                return True
+                            for method in allowed_updates:
+                                if method not in webhook_info.allowed_updates:
+                                    return True
+                        logger.info('No need to change telegram bot setting. Skip calling')
+                        return False
+
+                    setted = None
+                    if diff_settings():
+                        setted = bot.setWebhook(hookurl, certificate=certificate, timeout=timeout,
+                                                max_connections=max_connections, allowed_updates=allowed_updates)
+                    real_allowed = webhook_info.allowed_updates if webhook_info.allowed_updates else ["ALL"]
                     bot.more_info = webhook_info
-                    logger.info('Telegram Bot <{}> setting webhook [ {} ] max connections:{} allowed updates:{} pending updates:{} : {}'.format(bot.username, webhook_info.url, webhook_info.max_connections, real_allowed, webhook_info.pending_update_count, setted))
+                    logger.info(
+                        'Telegram Bot <{}> setting webhook [ {} ] max connections:{} allowed updates:{} pending updates:{} : {}'.format(
+                            bot.username, webhook_info.url, webhook_info.max_connections, real_allowed,
+                            webhook_info.pending_update_count, setted))
 
                 except InvalidToken:
                     logger.error('Invalid Token : {}'.format(token))
