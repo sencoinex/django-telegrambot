@@ -178,7 +178,7 @@ class DjangoTelegramBot(AppConfig):
                             request = Request(proxy_url=proxy['proxy_url'], urllib3_proxy_kwargs=proxy['urllib3_proxy_kwargs'], con_pool_size=b.get('MESSAGEQUEUE_REQUEST_CON_POOL_SIZE',8))
                         else:
                             request = Request(con_pool_size=b.get('MESSAGEQUEUE_REQUEST_CON_POOL_SIZE',8))
-                        bot = MQBot(token, request=request, mqueue=q)
+                        bot = MQBot(mqueue=q, token=token, request=request)
                     else:
                         request = None
                         if proxy:
