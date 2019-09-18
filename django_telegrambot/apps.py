@@ -235,7 +235,7 @@ class DjangoTelegramBot(AppConfig):
 
             else:
                 try:
-                    updater = Updater(token=token, request_kwargs=proxy)
+                    updater = Updater(token=token, request_kwargs=proxy, use_context=True)
                     bot = updater.bot
                     bot.delete_webhook()
                     DjangoTelegramBot.updaters.append(updater)
